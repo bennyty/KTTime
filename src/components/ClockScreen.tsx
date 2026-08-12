@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { useGameClock } from '../hooks/useGameClock';
+import type { PlayerId } from '../timer/types';
 import { CenterBand } from './CenterBand';
 import { MenuSheet } from './MenuSheet';
 import { PlayerZone } from './PlayerZone';
@@ -7,19 +8,73 @@ import { PlayerZone } from './PlayerZone';
 type GameClock = ReturnType<typeof useGameClock>;
 
 export function ClockScreen({ clock }: { clock: GameClock }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { state, remaining, passTurn, setSharedDepletion, togglePause, reset } = clock;
+  // Only one player's menu can be showing at a time — a single value rather
+  // than a per-player flag means opening one implicitly dismisses the other.
+  const [activeMenu, setActiveMenu] = useState<PlayerId | null>(null);
+  const closeMenu = () => setActiveMenu(null);
+
+  const {
+    state,
+    remaining,
+    passTurn,
+    setSharedDepletion,
+    togglePause,
+    reset,
+    cycleOperative,
+    toggleInitiative,
+    advanceTurningPoint,
+    resolveInitiative,
+  } = clock;
 
   const isShared = state.activePlayers.length === 2;
   const isPaused = state.activePlayers.length === 0;
+  const awaitingInitiative = state.activation.awaitingInitiative;
 
-  // A player's own zone only passes the turn when they're the sole active
-  // player — during shared depletion or while paused, tapping is a no-op
-  // (the menu is the only way to change those modes).
+  // While awaiting initiative (just after advancing a turning point),
+  // tapping either zone declares that player the winner instead of the
+  // normal pass-turn behavior. Otherwise, a player's own zone only passes
+  // the turn when they're the sole active player — during shared depletion
+  // or while paused, tapping is a no-op (the menu is the only way to change
+  // those modes).
   const handleTap = (player: 'A' | 'B') => {
+    if (awaitingInitiative) {
+      resolveInitiative(player);
+      return;
+    }
     if (state.activePlayers.length === 1 && state.activePlayers[0] === player) {
       passTurn();
     }
+  };
+
+  const menuDisplayProps = {
+    isPaused,
+    isShared,
+    turningPoint: state.activation.turningPoint,
+    initiativeHolder: state.activation.initiativeHolder,
+  };
+
+  const menuActions = {
+    onTogglePause: () => {
+      togglePause();
+      closeMenu();
+    },
+    onToggleShared: () => {
+      setSharedDepletion(!isShared);
+      closeMenu();
+    },
+    onReset: () => {
+      reset();
+      closeMenu();
+    },
+    onAdvanceTurningPoint: () => {
+      advanceTurningPoint();
+      closeMenu();
+    },
+    onToggleInitiative: () => {
+      toggleInitiative();
+      closeMenu();
+    },
+    onClose: closeMenu,
   };
 
   return (
@@ -31,8 +86,15 @@ export function ClockScreen({ clock }: { clock: GameClock }) {
         isShared={isShared}
         flipped
         onTap={() => handleTap('B')}
+        onLongPress={() => setActiveMenu('B')}
       />
-      <CenterBand onOpenMenu={() => setMenuOpen(true)} />
+      <CenterBand
+        operativeStates={state.activation.operativeStates}
+        initiativeHolder={state.activation.initiativeHolder}
+        turningPoint={state.activation.turningPoint}
+        awaitingInitiative={awaitingInitiative}
+        onCycleOperative={cycleOperative}
+      />
       <PlayerZone
         player="A"
         remainingMs={remaining('A')}
@@ -40,26 +102,10 @@ export function ClockScreen({ clock }: { clock: GameClock }) {
         isShared={isShared}
         flipped={false}
         onTap={() => handleTap('A')}
+        onLongPress={() => setActiveMenu('A')}
       />
-      {menuOpen && (
-        <MenuSheet
-          isPaused={isPaused}
-          isShared={isShared}
-          onTogglePause={() => {
-            togglePause();
-            setMenuOpen(false);
-          }}
-          onToggleShared={() => {
-            setSharedDepletion(!isShared);
-            setMenuOpen(false);
-          }}
-          onReset={() => {
-            reset();
-            setMenuOpen(false);
-          }}
-          onClose={() => setMenuOpen(false)}
-        />
-      )}
+      <MenuSheet origin="B" visible={activeMenu === 'B'} {...menuDisplayProps} {...menuActions} />
+      <MenuSheet origin="A" visible={activeMenu === 'A'} {...menuDisplayProps} {...menuActions} />
     </div>
   );
 }

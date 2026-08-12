@@ -13,7 +13,7 @@ export function loadState(): PersistedGameState | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PersistedGameState;
-    if (parsed.schemaVersion !== 1) return null;
+    if (parsed.schemaVersion !== 4) return null;
     return parsed;
   } catch {
     return null;

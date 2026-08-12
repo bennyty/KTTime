@@ -1,21 +1,32 @@
+import type { OperativeState, PlayerId } from '../timer/types';
 import { CircleGrid } from './CircleGrid';
 
 interface CenterBandProps {
-  onOpenMenu: () => void;
+  operativeStates: Record<PlayerId, OperativeState[]>;
+  initiativeHolder: PlayerId;
+  turningPoint: number;
+  awaitingInitiative: boolean;
+  onCycleOperative: (player: PlayerId, index: number) => void;
 }
 
-export function CenterBand({ onOpenMenu }: CenterBandProps) {
+export function CenterBand({
+  operativeStates,
+  initiativeHolder,
+  turningPoint,
+  awaitingInitiative,
+  onCycleOperative,
+}: CenterBandProps) {
   return (
-    <div className="relative flex flex-none flex-col items-center justify-center gap-1.5 bg-neutral-950 py-3">
-      <CircleGrid />
-      <button
-        type="button"
-        onClick={onOpenMenu}
-        aria-label="Menu"
-        className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-800 text-lg text-neutral-400"
-      >
-        ⋮
-      </button>
+    <div className="flex flex-col bg-neutral-950 m-3">
+      <span className="text-sm uppercase tracking-wider text-neutral-600">Turning Point {turningPoint}</span>
+      {awaitingInitiative ? (
+        <div className="flex flex-col items-center gap-1 py-4 text-center">
+          <p className="text-sm font-semibold uppercase tracking-wide text-neutral-100">Roll for initiative</p>
+          <p className="text-xs text-neutral-400">Tap the player who won</p>
+        </div>
+      ) : (
+        <CircleGrid operativeStates={operativeStates} initiativeHolder={initiativeHolder} onCycle={onCycleOperative} />
+      )}
     </div>
   );
 }

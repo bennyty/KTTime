@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  advanceTurningPoint as engineAdvanceTurningPoint,
   createInitialState,
+  cycleOperative as engineCycleOperative,
   passTurn as enginePassTurn,
   remainingMs,
   resetToSetup as engineResetToSetup,
+  resolveInitiative as engineResolveInitiative,
   setSharedDepletion as engineSetSharedDepletion,
   startGame as engineStartGame,
+  toggleInitiative as engineToggleInitiative,
   togglePause as engineTogglePause,
 } from '../timer/engine';
 import { registerLifecyclePersistence } from '../timer/lifecycle';
@@ -49,9 +53,12 @@ export function useGameClock() {
     [],
   );
 
-  const startGame = useCallback((budgets: Record<PlayerId, number>, startingPlayer: PlayerId = 'A') => {
-    setState((s) => engineStartGame(s, budgets, Date.now(), startingPlayer));
-  }, []);
+  const startGame = useCallback(
+    (budgets: Record<PlayerId, number>, operativeCounts?: Record<PlayerId, number>, autoActivateOnPass?: boolean) => {
+      setState((s) => engineStartGame(s, budgets, Date.now(), operativeCounts, autoActivateOnPass));
+    },
+    [],
+  );
 
   const passTurn = useCallback(() => {
     setState((s) => enginePassTurn(s, Date.now()));
@@ -69,6 +76,22 @@ export function useGameClock() {
     setState((s) => engineResetToSetup(s));
   }, []);
 
+  const cycleOperative = useCallback((player: PlayerId, index: number) => {
+    setState((s) => engineCycleOperative(s, player, index));
+  }, []);
+
+  const toggleInitiative = useCallback(() => {
+    setState((s) => engineToggleInitiative(s));
+  }, []);
+
+  const advanceTurningPoint = useCallback(() => {
+    setState((s) => engineAdvanceTurningPoint(s, Date.now()));
+  }, []);
+
+  const resolveInitiative = useCallback((winner: PlayerId) => {
+    setState((s) => engineResolveInitiative(s, winner, Date.now()));
+  }, []);
+
   const now = Date.now();
 
   return {
@@ -80,5 +103,9 @@ export function useGameClock() {
     setSharedDepletion,
     togglePause,
     reset,
+    cycleOperative,
+    toggleInitiative,
+    advanceTurningPoint,
+    resolveInitiative,
   };
 }

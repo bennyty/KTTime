@@ -6,7 +6,13 @@ export default function App() {
   const clock = useGameClock();
 
   if (clock.state.phase === 'setup') {
-    return <SetupScreen onStart={(budgets) => clock.startGame(budgets)} />;
+    return (
+      <SetupScreen
+        onStart={(budgets, operativeCounts, autoActivateOnPass) =>
+          clock.startGame(budgets, operativeCounts, autoActivateOnPass)
+        }
+      />
+    );
   }
 
   return <ClockScreen clock={clock} />;

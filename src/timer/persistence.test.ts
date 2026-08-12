@@ -18,7 +18,7 @@ describe('persistence', () => {
   });
 
   it('ignores a stored value with a mismatched schema version', () => {
-    localStorage.setItem('kttime.gameState.v1', JSON.stringify({ schemaVersion: 2 }));
+    localStorage.setItem('kttime.gameState.v1', JSON.stringify({ schemaVersion: 1 }));
     expect(loadState()).toBeNull();
   });
 
