@@ -1,0 +1,533 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway code answering "what should the core clock screen look like?"
+  Resolves KTTime GitHub issue #5. Not production code — no build step, no tests,
+  minimal error handling. Three structurally different variants of the same screen,
+  switchable via ?variant=A|B|C and the floating bottom bar. State model matches the
+  schema locked in issue #3 (activePlayers array, accumulatedElapsedMs, turnStartTimestamp).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>KTTime prototype — clock screen</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    background: #000;
+  }
+
+  #app { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+  .zone {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: background-color 300ms ease, border-color 300ms ease;
+    cursor: pointer;
+  }
+  .zone.flip { transform: rotate(180deg); }
+
+  .readout { font-variant-numeric: tabular-nums; font-weight: 700; line-height: 1; }
+  .label { position: absolute; top: 12px; left: 16px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+  .overtime-tag { position: absolute; bottom: 12px; left: 16px; font-size: 13px; letter-spacing: 0.04em; opacity: 0.85; }
+
+  .center-band {
+    flex: 0 0 auto;
+    height: 84px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #111;
+    border-top: 1px solid #222;
+    border-bottom: 1px solid #222;
+    position: relative;
+  }
+  .center-band .reserved-note { font-size: 12px; color: #555; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  /* --- Final: A's full-bleed + C's badges/overflow menu --- */
+  .vf-zone-inactive { background: #17181c; color: #6b6f78; }
+  .vf-zone-active   { background: #1d6b3f; color: #eafff2; }
+  .vf-zone-shared   { background: #1d5a6b; color: #eafbff; }
+  .vf-zone-timesup  { background: #6b1d1d; color: #ffecec; }
+  .vf-readout { font-size: 15vw; }
+  .vf-badge {
+    position: absolute; top: 12px; right: 16px; font-size: 11px; padding: 3px 9px;
+    border-radius: 999px; background: rgba(255,255,255,0.14); letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .vf-badge.timesup { background: rgba(0,0,0,0.35); }
+  .vf-center-band {
+    height: auto; padding: 10px 0; background: #0c0c0e; flex-direction: column; gap: 4px; border: none;
+  }
+  .vf-menu-btn {
+    position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 8px;
+    background: #1c1d22; color: #777; display: flex; align-items: center; justify-content: center; font-size: 17px;
+    z-index: 5;
+  }
+  .vf-circle-grid { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 0 10px; box-sizing: border-box; }
+  .vf-circle-row { display: flex; gap: 4px; width: 100%; }
+  .vf-circle-row.offset { /* margin-left set at runtime to exactly one circle radius */ }
+  .vf-circle {
+    flex: 1 1 0;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.14);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .vf-menu-sheet {
+    position: fixed; inset: auto 0 0 0; background: #1c1e24; border-top: 1px solid #333;
+    padding: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 20;
+  }
+  .vf-menu-sheet button { background: #262832; color: #eee; border: none; border-radius: 10px; padding: 14px; font-size: 15px; }
+  .vf-menu-sheet .vf-menu-check { float: right; opacity: 0.7; }
+
+  /* --- Variant A: full-bleed fill --- */
+  .va-zone-inactive { background: #17181c; color: #6b6f78; }
+  .va-zone-active   { background: #1d6b3f; color: #eafff2; }
+  .va-zone-shared   { background: #1d5a6b; color: #eafbff; }
+  .va-zone-timesup  { background: #6b1d1d; color: #ffecec; }
+  .va-readout { font-size: 15vw; }
+  .va-pause-btn {
+    position: absolute; bottom: 8px; right: 10px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #1c1d20; opacity: 0.5;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #888; border: 1px solid #2c2d30;
+  }
+
+  /* --- Variant B: ring/glow accent, dark, tucked controls --- */
+  .vb-zone { background: #0a0a0c; color: #4a4d55; border: 3px solid transparent; }
+  .vb-zone-active { color: #dff7ea; border-color: #35d68a; box-shadow: inset 0 0 40px rgba(53,214,138,0.15); }
+  .vb-zone-shared { color: #dff2ff; border-color: #35a8d6; box-shadow: inset 0 0 40px rgba(53,168,214,0.15); }
+  .vb-zone-timesup { color: #ffd9d9; border-color: #d63535; background: #1a0d0d; }
+  .vb-readout { font-size: 14vw; font-weight: 300; letter-spacing: -0.02em; }
+  .vb-link-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .vb-link-hint span { width: 3px; height: 40px; background: #35a8d6; opacity: 0.5; }
+  .vb-center-band { background: #050506; border: none; }
+  .vb-pause-hint { font-size: 11px; color: #333; letter-spacing: 0.08em; text-transform: uppercase; }
+  .vb-pause-reveal {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center; gap: 24px;
+  }
+  .vb-pause-reveal button {
+    background: #1a1b1e; color: #eee; border: 1px solid #333; border-radius: 999px;
+    padding: 10px 20px; font-size: 14px;
+  }
+
+  /* --- Variant C: card-based with badges --- */
+  body[data-variant="C"] #app { background: #14151a; padding: 10px; gap: 10px; }
+  .vc-zone {
+    border-radius: 20px; background: #1c1e24; color: #5a5e6b;
+    border: 2px solid #262832; margin: 0 6px;
+  }
+  .vc-zone:first-child { margin-top: 6px; }
+  .vc-zone:last-child { margin-bottom: 6px; }
+  .vc-zone-active { background: #1c2b22; color: #e7fff0; border-color: #2f8f56; }
+  .vc-zone-shared { background: #1c2630; color: #e7f6ff; border-color: #2f7c8f; }
+  .vc-zone-timesup { background: #2b1c1c; color: #ffe7e7; border-color: #8f2f2f; }
+  .vc-readout { font-size: 13vw; font-weight: 800; }
+  .vc-badge {
+    position: absolute; top: 12px; right: 16px; font-size: 11px; padding: 3px 9px;
+    border-radius: 999px; background: rgba(255,255,255,0.08); letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .vc-badge.on { background: #2f8f56; color: #fff; }
+  .vc-badge.timesup { background: #8f2f2f; color: #fff; }
+  .vc-center-band { background: transparent; border: none; flex-direction: column; gap: 6px; height: 96px; }
+  .vc-toggle-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888; }
+  .vc-toggle {
+    width: 38px; height: 22px; border-radius: 999px; background: #2a2c34; position: relative; transition: background 200ms;
+  }
+  .vc-toggle.on { background: #2f7c8f; }
+  .vc-toggle::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+    background: #ddd; transition: transform 200ms;
+  }
+  .vc-toggle.on::after { transform: translateX(16px); }
+  .vc-menu-btn {
+    position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 8px;
+    background: #22242b; color: #666; display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .vc-menu-sheet {
+    position: fixed; inset: auto 0 0 0; background: #1c1e24; border-top: 1px solid #333;
+    padding: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 20;
+  }
+  .vc-menu-sheet button { background: #262832; color: #eee; border: none; border-radius: 10px; padding: 14px; font-size: 15px; }
+
+  /* --- Dev controls (not part of any variant; testing aid) --- */
+  #dev-controls {
+    position: fixed; top: 8px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; z-index: 30; flex-wrap: wrap; justify-content: center; width: calc(100% - 16px);
+  }
+  #dev-controls button {
+    font-size: 10px; padding: 5px 8px; border-radius: 6px; border: 1px solid #333;
+    background: rgba(20,20,24,0.9); color: #aaa;
+  }
+
+  /* --- Prototype switcher bar --- */
+  #switcher {
+    position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+    background: #fff; color: #000; border-radius: 999px; padding: 6px 6px 6px 14px;
+    display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    font-size: 13px; font-weight: 600; z-index: 40;
+  }
+  #switcher button {
+    width: 30px; height: 30px; border-radius: 50%; border: none; background: #eee; font-size: 14px;
+  }
+</style>
+</head>
+<body>
+  <div id="dev-controls"></div>
+  <div id="app"></div>
+  <div id="switcher"></div>
+
+<script>
+// ---------- State model (matches issue #3's locked schema) ----------
+const PRESET_TOTAL_MS = 2 * 60 * 60 * 1000; // 2hr default preset, split 50/50
+const state = {
+  schemaVersion: 1,
+  phase: 'active',
+  players: {
+    A: { totalBudgetMs: PRESET_TOTAL_MS / 2, accumulatedElapsedMs: 0 },
+    B: { totalBudgetMs: PRESET_TOTAL_MS / 2, accumulatedElapsedMs: 0 },
+  },
+  activePlayers: ['A'],
+  turnStartTimestamp: Date.now(),
+  pausedActivePlayers: null,
+};
+
+function commit(now) {
+  for (const p of state.activePlayers) {
+    state.players[p].accumulatedElapsedMs += now - state.turnStartTimestamp;
+  }
+}
+function setActive(players, now) {
+  commit(now);
+  state.activePlayers = players;
+  state.turnStartTimestamp = players.length ? now : null;
+}
+function passTurn() {
+  const now = Date.now();
+  const other = state.activePlayers.includes('A') && !state.activePlayers.includes('B') ? ['B'] : ['A'];
+  setActive(other, now);
+}
+function toggleShared() {
+  const now = Date.now();
+  if (state.activePlayers.length === 2) {
+    setActive(['A'], now); // arbitrary: drop back to A's turn
+  } else {
+    setActive(['A', 'B'], now);
+  }
+}
+function togglePause() {
+  const now = Date.now();
+  if (state.activePlayers.length === 0) {
+    setActive(state.pausedActivePlayers || ['A'], now);
+    state.pausedActivePlayers = null;
+  } else {
+    state.pausedActivePlayers = state.activePlayers;
+    setActive([], now);
+  }
+}
+function remainingMs(player, now) {
+  const live = state.activePlayers.includes(player) && state.turnStartTimestamp
+    ? now - state.turnStartTimestamp : 0;
+  return state.players[player].totalBudgetMs - (state.players[player].accumulatedElapsedMs + live);
+}
+function fmt(ms) {
+  const neg = ms < 0;
+  ms = Math.abs(ms);
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const core = h > 0
+    ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    : `${m}:${String(s).padStart(2,'0')}`;
+  return neg ? `+${core}` : core;
+}
+
+// Dev/testing helpers — not part of any variant, just for exercising states fast
+function devAdvance(ms) {
+  const now = Date.now();
+  for (const p of state.activePlayers) {
+    state.players[p].accumulatedElapsedMs += ms;
+  }
+  state.turnStartTimestamp = now;
+}
+function devForceOvertime(player) {
+  const now = Date.now();
+  commit(now);
+  state.players[player].accumulatedElapsedMs = state.players[player].totalBudgetMs + 5000;
+  state.turnStartTimestamp = now;
+}
+function devReset() {
+  state.players.A.accumulatedElapsedMs = 0;
+  state.players.B.accumulatedElapsedMs = 0;
+  state.activePlayers = ['A'];
+  state.turnStartTimestamp = Date.now();
+  state.pausedActivePlayers = null;
+}
+
+// ---------- Variant renderers ----------
+function zoneClass(player, now, prefix) {
+  const rem = remainingMs(player, now);
+  const isTimesUp = rem <= 0;
+  const isActive = state.activePlayers.includes(player);
+  const isShared = state.activePlayers.length === 2;
+  if (isTimesUp) return `${prefix}-zone-timesup`;
+  if (isShared) return `${prefix}-zone-shared`;
+  if (isActive) return `${prefix}-zone-active`;
+  return `${prefix}-zone-inactive`;
+}
+
+function renderVariantA(now) {
+  const el = document.createElement('div');
+  el.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0;';
+  ['B','A'].forEach((player, i) => { // B on top (flipped), A on bottom — screen sits between players
+    const zone = document.createElement('div');
+    zone.className = `zone ${zoneClass(player, now, 'va')}` + (player === 'B' ? ' flip' : '');
+    zone.onclick = () => { if (state.activePlayers.includes(player)) passTurn(); render(); };
+    const rem = remainingMs(player, now);
+    zone.innerHTML = `
+      <div class="label">Player ${player}${state.activePlayers.length===2 ? ' · shared' : ''}</div>
+      <div class="readout va-readout">${fmt(rem)}</div>
+      ${rem <= 0 ? `<div class="overtime-tag">TIME'S UP · overtime</div>` : ''}
+    `;
+    el.appendChild(zone);
+  });
+  const band = document.createElement('div');
+  band.className = 'center-band';
+  band.innerHTML = `<span class="reserved-note">Game state — reserved</span>
+    <div class="va-pause-btn" title="pause">⏸</div>`;
+  band.querySelector('.va-pause-btn').onclick = (e) => { e.stopPropagation(); togglePause(); render(); };
+  el.insertBefore(band, el.children[1]);
+  return el;
+}
+
+function renderVariantB(now) {
+  const el = document.createElement('div');
+  el.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0;';
+  ['B','A'].forEach((player) => {
+    const zone = document.createElement('div');
+    const cls = zoneClass(player, now, 'vb');
+    zone.className = `zone vb-zone ${cls}` + (player === 'B' ? ' flip' : '');
+    zone.onclick = () => { if (state.activePlayers.includes(player)) passTurn(); render(); };
+    const rem = remainingMs(player, now);
+    zone.innerHTML = `
+      <div class="label">Player ${player}</div>
+      <div class="readout vb-readout">${fmt(rem)}</div>
+      ${rem <= 0 ? `<div class="overtime-tag">Time's up</div>` : ''}
+      ${state.activePlayers.length === 2 ? `<div class="vb-link-hint"><span></span></div>` : ''}
+    `;
+    el.appendChild(zone);
+  });
+  const band = document.createElement('div');
+  band.className = 'center-band vb-center-band';
+  band.innerHTML = `<span class="vb-pause-hint">hold for options</span>`;
+  let holdTimer = null;
+  band.onpointerdown = () => { holdTimer = setTimeout(() => showPauseReveal(band), 550); };
+  band.onpointerup = () => clearTimeout(holdTimer);
+  band.onpointerleave = () => clearTimeout(holdTimer);
+  el.insertBefore(band, el.children[1]);
+  return el;
+}
+function showPauseReveal(band) {
+  const reveal = document.createElement('div');
+  reveal.className = 'vb-pause-reveal';
+  reveal.innerHTML = `<button id="vb-pause-btn">${state.activePlayers.length===0 ? 'Resume' : 'Pause'}</button>
+    <button id="vb-shared-btn">${state.activePlayers.length===2 ? 'End shared' : 'Shared depletion'}</button>`;
+  reveal.onclick = (e) => {
+    if (e.target.id === 'vb-pause-btn') togglePause();
+    if (e.target.id === 'vb-shared-btn') toggleShared();
+    render();
+  };
+  band.appendChild(reveal);
+  setTimeout(() => reveal.remove(), 4000);
+}
+
+function renderVariantC(now) {
+  const el = document.createElement('div');
+  el.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0;gap:10px;';
+  ['B','A'].forEach((player) => {
+    const zone = document.createElement('div');
+    const cls = zoneClass(player, now, 'vc');
+    zone.className = `zone vc-zone ${cls}` + (player === 'B' ? ' flip' : '');
+    zone.onclick = () => { if (state.activePlayers.includes(player)) passTurn(); render(); };
+    const rem = remainingMs(player, now);
+    const isShared = state.activePlayers.length === 2;
+    const badge = rem <= 0
+      ? `<div class="vc-badge timesup">Time's up</div>`
+      : (isShared ? `<div class="vc-badge on">Shared</div>` : (state.activePlayers.includes(player) ? `<div class="vc-badge on">Active</div>` : ''));
+    zone.innerHTML = `
+      <div class="label">Player ${player}</div>
+      ${badge}
+      <div class="readout vc-readout">${fmt(rem)}</div>
+    `;
+    el.appendChild(zone);
+  });
+  const band = document.createElement('div');
+  band.className = 'center-band vc-center-band';
+  band.innerHTML = `
+    <span class="reserved-note">Game state — reserved</span>
+    <div class="vc-toggle-row">
+      <span>Shared depletion</span>
+      <div class="vc-toggle ${state.activePlayers.length===2?'on':''}" id="vc-shared-toggle"></div>
+    </div>
+    <div class="vc-menu-btn" id="vc-menu-btn">⋮</div>
+  `;
+  band.querySelector('#vc-shared-toggle').onclick = (e) => { e.stopPropagation(); toggleShared(); render(); };
+  band.querySelector('#vc-menu-btn').onclick = (e) => { e.stopPropagation(); showMenuSheet(); };
+  el.insertBefore(band, el.children[1]);
+  return el;
+}
+function showMenuSheet() {
+  const sheet = document.createElement('div');
+  sheet.className = 'vc-menu-sheet';
+  sheet.innerHTML = `
+    <button id="vc-pause-btn">${state.activePlayers.length===0 ? 'Resume game' : 'Pause game'}</button>
+    <button id="vc-reset-btn">Reset (back to setup)</button>
+    <button id="vc-close-btn">Close</button>
+  `;
+  sheet.onclick = (e) => {
+    if (e.target.id === 'vc-pause-btn') togglePause();
+    if (e.target.id === 'vc-reset-btn') devReset();
+    sheet.remove();
+    render();
+  };
+  document.body.appendChild(sheet);
+}
+
+function renderVariantF(now) {
+  const el = document.createElement('div');
+  el.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0;';
+  ['B','A'].forEach((player) => {
+    const zone = document.createElement('div');
+    zone.className = `zone ${zoneClass(player, now, 'vf')}` + (player === 'B' ? ' flip' : '');
+    zone.onclick = () => { if (state.activePlayers.includes(player)) passTurn(); render(); };
+    const rem = remainingMs(player, now);
+    const isShared = state.activePlayers.length === 2;
+    const badge = rem <= 0
+      ? `<div class="vf-badge timesup">Time's up</div>`
+      : (isShared ? `<div class="vf-badge">Shared</div>` : (state.activePlayers.includes(player) ? `<div class="vf-badge">Active</div>` : ''));
+    zone.innerHTML = `
+      <div class="label">Player ${player}</div>
+      ${badge}
+      <div class="readout vf-readout">${fmt(rem)}</div>
+    `;
+    el.appendChild(zone);
+  });
+  const band = document.createElement('div');
+  band.className = 'center-band vf-center-band';
+  const rows = [0, 1].map((rowIdx) => {
+    const circles = Array.from({length: 14}, () => `<div class="vf-circle"></div>`).join('');
+    return `<div class="vf-circle-row${rowIdx === 1 ? ' offset' : ''}">${circles}</div>`;
+  }).join('');
+  band.innerHTML = `
+    <div class="vf-circle-grid">${rows}</div>
+    <div class="vf-menu-btn" id="vf-menu-btn">⋮</div>
+  `;
+  band.querySelector('#vf-menu-btn').onclick = (e) => { e.stopPropagation(); showFinalMenuSheet(); };
+  el.insertBefore(band, el.children[1]);
+  // Offset the second row by exactly one circle's radius, measured after layout.
+  requestAnimationFrame(() => {
+    const firstCircle = band.querySelector('.vf-circle-row:not(.offset) .vf-circle');
+    const offsetRow = band.querySelector('.vf-circle-row.offset');
+    if (firstCircle && offsetRow) {
+      const radius = firstCircle.getBoundingClientRect().width / 2;
+      offsetRow.style.marginLeft = `${radius}px`;
+      offsetRow.style.width = `calc(100% - ${radius}px)`;
+    }
+  });
+  return el;
+}
+function showFinalMenuSheet() {
+  const sheet = document.createElement('div');
+  sheet.className = 'vf-menu-sheet';
+  const sharedOn = state.activePlayers.length === 2;
+  sheet.innerHTML = `
+    <button id="vf-pause-btn">${state.activePlayers.length===0 ? 'Resume game' : 'Pause game'}</button>
+    <button id="vf-shared-btn">Shared depletion ${sharedOn ? '<span class="vf-menu-check">✓ on</span>' : ''}</button>
+    <button id="vf-reset-btn">Reset (back to setup)</button>
+    <button id="vf-close-btn">Close</button>
+  `;
+  sheet.onclick = (e) => {
+    if (e.target.id === 'vf-pause-btn') togglePause();
+    if (e.target.id === 'vf-shared-btn') toggleShared();
+    if (e.target.id === 'vf-reset-btn') devReset();
+    sheet.remove();
+    render();
+  };
+  document.body.appendChild(sheet);
+}
+
+// ---------- Switcher + render loop ----------
+const variants = { F: renderVariantF, A: renderVariantA, B: renderVariantB, C: renderVariantC };
+const names = { F: 'Final combined', A: 'Full-bleed fill', B: 'Ring/glow, hold-to-reveal', C: 'Cards + overflow menu' };
+function getVariant() {
+  const p = new URLSearchParams(location.search).get('variant');
+  return variants[p] ? p : 'F';
+}
+function setVariant(v) {
+  const url = new URL(location.href);
+  url.searchParams.set('variant', v);
+  history.replaceState(null, '', url);
+  render();
+  renderSwitcher();
+}
+function renderSwitcher() {
+  const v = getVariant();
+  const order = Object.keys(variants);
+  const bar = document.getElementById('switcher');
+  bar.innerHTML = `<button id="sw-prev">←</button><span>${v} — ${names[v]}</span><button id="sw-next">→</button>`;
+  bar.querySelector('#sw-prev').onclick = () => setVariant(order[(order.indexOf(v) - 1 + order.length) % order.length]);
+  bar.querySelector('#sw-next').onclick = () => setVariant(order[(order.indexOf(v) + 1) % order.length]);
+}
+document.addEventListener('keydown', (e) => {
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  const order = Object.keys(variants);
+  const v = getVariant();
+  if (e.key === 'ArrowLeft') setVariant(order[(order.indexOf(v) - 1 + order.length) % order.length]);
+  if (e.key === 'ArrowRight') setVariant(order[(order.indexOf(v) + 1) % order.length]);
+});
+
+function renderDevControls() {
+  const el = document.getElementById('dev-controls');
+  el.innerHTML = `
+    <button id="dc-shared">toggle shared</button>
+    <button id="dc-pause">toggle pause</button>
+    <button id="dc-fwd">+30s active</button>
+    <button id="dc-overtime-a">force A overtime</button>
+    <button id="dc-overtime-b">force B overtime</button>
+    <button id="dc-reset">reset</button>
+  `;
+  el.querySelector('#dc-shared').onclick = () => { toggleShared(); render(); };
+  el.querySelector('#dc-pause').onclick = () => { togglePause(); render(); };
+  el.querySelector('#dc-fwd').onclick = () => { devAdvance(30000); render(); };
+  el.querySelector('#dc-overtime-a').onclick = () => { devForceOvertime('A'); render(); };
+  el.querySelector('#dc-overtime-b').onclick = () => { devForceOvertime('B'); render(); };
+  el.querySelector('#dc-reset').onclick = () => { devReset(); render(); };
+}
+
+function render() {
+  const now = Date.now();
+  document.body.setAttribute('data-variant', getVariant());
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  app.appendChild(variants[getVariant()](now));
+}
+
+renderDevControls();
+renderSwitcher();
+render();
+setInterval(render, 500);
+</script>
+</body>
+</html>
