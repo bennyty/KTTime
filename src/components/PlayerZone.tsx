@@ -48,9 +48,9 @@ export function PlayerZone({ player, remainingMs, isActive, isShared, flipped, o
           {badge}
         </span>
       )}
-      <span className="font-bold tabular-nums" style={{ fontSize: '22vw' }}>
+      <div className="font-bold tabular-nums" style={{ fontSize: 'min(22vh,26vw)' }}>
         {formatDuration(remainingMs)}
-      </span>
+      </div>
     </button>
   );
 }

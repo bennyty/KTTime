@@ -106,6 +106,13 @@ export function ClockScreen({ clock }: { clock: GameClock }) {
         onTap={() => handleTap('A')}
         onLongPress={() => setActiveMenu('A')}
       />
+      {activeMenu !== null && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-10 mx-auto max-w-4xl"
+          onClick={closeMenu}
+        />
+      )}
       <MenuSheet origin="B" visible={activeMenu === 'B'} {...menuDisplayProps} {...menuActions} />
       <MenuSheet origin="A" visible={activeMenu === 'A'} {...menuDisplayProps} {...menuActions} />
     </div>

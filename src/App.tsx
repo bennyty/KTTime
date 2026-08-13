@@ -5,15 +5,17 @@ import { useGameClock } from './hooks/useGameClock';
 export default function App() {
   const clock = useGameClock();
 
-  if (clock.state.phase === 'setup') {
-    return (
-      <SetupScreen
-        onStart={(budgets, operativeCounts, autoActivateOnPass) =>
-          clock.startGame(budgets, operativeCounts, autoActivateOnPass)
-        }
-      />
-    );
-  }
-
-  return <ClockScreen clock={clock} />;
+  return (
+    <div className="mx-auto h-full max-w-4xl">
+      {clock.state.phase === 'setup' ? (
+        <SetupScreen
+          onStart={(budgets, operativeCounts, autoActivateOnPass) =>
+            clock.startGame(budgets, operativeCounts, autoActivateOnPass)
+          }
+        />
+      ) : (
+        <ClockScreen clock={clock} />
+      )}
+    </div>
+  );
 }
