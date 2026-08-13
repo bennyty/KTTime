@@ -3,6 +3,7 @@ import {
   advanceTurningPoint,
   createInitialState,
   cycleOperative,
+  endStrategyPhase,
   passTurn,
   remainingMs,
   resetToSetup,
@@ -51,7 +52,7 @@ describe('startGame', () => {
     expect(state.players.B).toEqual({ totalBudgetMs: HOUR, accumulatedElapsedMs: 0 });
     expect(state.activePlayers).toEqual(['A', 'B']);
     expect(state.turnStartTimestamp).toBe(T0);
-    expect(state.activation.awaitingInitiative).toBe(true);
+    expect(state.activation.activationPhase).toBe('initiative');
   });
 
   it('supports asymmetric budgets', () => {
@@ -64,7 +65,7 @@ describe('startGame', () => {
     const state = resolveInitiative(startGame(createInitialState(), { A: HOUR, B: HOUR }, T0), 'B', T0 + 3_000);
     expect(state.activePlayers).toEqual(['B']);
     expect(state.activation.initiativeHolder).toBe('B');
-    expect(state.activation.awaitingInitiative).toBe(false);
+    expect(state.activation.activationPhase).toBe('strategy');
   });
 
   it('defaults activation state to 14 ready operatives each, turning point 1', () => {
@@ -120,36 +121,33 @@ describe('passTurn', () => {
   });
 
   describe('auto-activate on pass (default on)', () => {
-    it('does nothing before anyone has manually activated an operative this turning point', () => {
-      let state = startAndResolveInitiative({ A: HOUR, B: HOUR });
+    it('does nothing during the strategy phase', () => {
+      let state = startAndResolveInitiative({ A: HOUR, B: HOUR }); // still in strategy phase
       state = passTurn(state, T0 + 1_000);
       expect(state.activation.operativeStates.A).toEqual(Array(14).fill('ready'));
     });
 
-    it('auto-marks the left-most Ready operative once the passing player has at least one Activated', () => {
-      let state = startAndResolveInitiative({ A: HOUR, B: HOUR });
-      state = cycleOperative(state, 'A', 3); // ready -> activated
+    it('auto-marks the left-most Ready operative on pass during the firefight phase', () => {
+      let state = endStrategyPhase(startAndResolveInitiative({ A: HOUR, B: HOUR }));
       state = passTurn(state, T0 + 1_000);
       expect(state.activation.operativeStates.A[0]).toBe('activated'); // left-most Ready, auto-marked
-      expect(state.activation.operativeStates.A[3]).toBe('activated'); // untouched
     });
 
-    it("is a global check: the OTHER player having an Activated operative is enough to trigger it", () => {
-      let state = startAndResolveInitiative({ A: HOUR, B: HOUR });
-      state = cycleOperative(state, 'B', 5); // B has activated one; A has activated none
-      state = passTurn(state, T0 + 1_000); // A passes
-      expect(state.activation.operativeStates.A[0]).toBe('activated'); // still auto-marked for A
+    it('does not require any operative to already be activated', () => {
+      let state = endStrategyPhase(startAndResolveInitiative({ A: HOUR, B: HOUR }));
+      // nobody has manually activated anything this turning point
+      state = passTurn(state, T0 + 1_000);
+      expect(state.activation.operativeStates.A[0]).toBe('activated');
     });
 
     it("only writes to the passing player's own row", () => {
-      let state = startAndResolveInitiative({ A: HOUR, B: HOUR });
-      state = cycleOperative(state, 'A', 0);
+      let state = endStrategyPhase(startAndResolveInitiative({ A: HOUR, B: HOUR }));
       state = passTurn(state, T0 + 1_000);
       expect(state.activation.operativeStates.B).toEqual(Array(14).fill('ready'));
     });
 
     it('is a no-op once the passing player has no Ready operatives left', () => {
-      let state = startAndResolveInitiative({ A: HOUR, B: HOUR }, { A: 2, B: 14 });
+      let state = endStrategyPhase(startAndResolveInitiative({ A: HOUR, B: HOUR }, { A: 2, B: 14 }));
       state = cycleOperative(state, 'A', 0); // ready -> activated
       state = cycleOperative(state, 'A', 1); // ready -> activated
       const before = state.activation.operativeStates.A;
@@ -158,12 +156,24 @@ describe('passTurn', () => {
     });
 
     it('does nothing when disabled at setup', () => {
-      let state = startAndResolveInitiative({ A: HOUR, B: HOUR }, undefined, false);
-      state = cycleOperative(state, 'A', 3);
+      let state = endStrategyPhase(startAndResolveInitiative({ A: HOUR, B: HOUR }, undefined, false));
       state = passTurn(state, T0 + 1_000);
       expect(state.activation.operativeStates.A[0]).toBe('ready');
-      expect(state.activation.operativeStates.A[3]).toBe('activated');
     });
+  });
+});
+
+describe('endStrategyPhase', () => {
+  it('advances from the strategy phase into the firefight phase', () => {
+    let state = startAndResolveInitiative({ A: HOUR, B: HOUR });
+    expect(state.activation.activationPhase).toBe('strategy');
+    state = endStrategyPhase(state);
+    expect(state.activation.activationPhase).toBe('firefight');
+  });
+
+  it('is a no-op when already in the firefight phase', () => {
+    const state = endStrategyPhase(startAndResolveInitiative({ A: HOUR, B: HOUR }));
+    expect(endStrategyPhase(state)).toEqual(state);
   });
 });
 
@@ -296,32 +306,41 @@ describe('advanceTurningPoint', () => {
     expect(state.activation.turningPoint).toBe(7);
   });
 
-  it('puts both players into shared depletion and flags awaitingInitiative', () => {
+  it('puts both players into shared depletion and returns to the initiative phase', () => {
     let state = startAndResolveInitiative({ A: HOUR, B: HOUR }); // A active solo
     state = advanceTurningPoint(state, T0 + 5_000);
     expect(state.activePlayers).toEqual(['A', 'B']);
-    expect(state.activation.awaitingInitiative).toBe(true);
+    expect(state.activation.activationPhase).toBe('initiative');
 
     // A's 5s of solo turn time was committed before shared depletion began
+    expect(state.players.A.accumulatedElapsedMs).toBe(5_000);
+    expect(state.players.B.accumulatedElapsedMs).toBe(0);
+  });
+
+  it('drops back into the initiative phase even from mid-firefight', () => {
+    let state = endStrategyPhase(startAndResolveInitiative({ A: HOUR, B: HOUR }));
+    expect(state.activation.activationPhase).toBe('firefight');
+    state = advanceTurningPoint(state, T0 + 5_000);
+    expect(state.activation.activationPhase).toBe('initiative');
     expect(state.players.A.accumulatedElapsedMs).toBe(5_000);
     expect(state.players.B.accumulatedElapsedMs).toBe(0);
   });
 });
 
 describe('resolveInitiative', () => {
-  it('sets the winner as initiative holder and sole active player, clearing awaitingInitiative', () => {
+  it('sets the winner as initiative holder and sole active player, advancing to the strategy phase', () => {
     let state = startAndResolveInitiative({ A: HOUR, B: HOUR });
     state = advanceTurningPoint(state, T0 + 5_000);
     state = resolveInitiative(state, 'B', T0 + 5_000 + 20_000); // 20s of shared depletion, 10s each
 
-    expect(state.activation.awaitingInitiative).toBe(false);
+    expect(state.activation.activationPhase).toBe('strategy');
     expect(state.activation.initiativeHolder).toBe('B');
     expect(state.activePlayers).toEqual(['B']);
     expect(state.players.A.accumulatedElapsedMs).toBe(5_000 + 10_000);
     expect(state.players.B.accumulatedElapsedMs).toBe(10_000);
   });
 
-  it('is a no-op when not awaiting initiative', () => {
+  it('is a no-op when not in the initiative phase', () => {
     const state = startAndResolveInitiative({ A: HOUR, B: HOUR });
     expect(resolveInitiative(state, 'B', T0 + 1_000)).toEqual(state);
   });

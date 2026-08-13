@@ -3,6 +3,7 @@ import {
   advanceTurningPoint as engineAdvanceTurningPoint,
   createInitialState,
   cycleOperative as engineCycleOperative,
+  endStrategyPhase as engineEndStrategyPhase,
   passTurn as enginePassTurn,
   remainingMs,
   resetToSetup as engineResetToSetup,
@@ -92,6 +93,10 @@ export function useGameClock() {
     setState((s) => engineResolveInitiative(s, winner, Date.now()));
   }, []);
 
+  const endStrategyPhase = useCallback(() => {
+    setState((s) => engineEndStrategyPhase(s));
+  }, []);
+
   const now = Date.now();
 
   return {
@@ -107,5 +112,6 @@ export function useGameClock() {
     toggleInitiative,
     advanceTurningPoint,
     resolveInitiative,
+    endStrategyPhase,
   };
 }

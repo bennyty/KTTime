@@ -19,7 +19,7 @@ function freshActivation(operativeCounts: Record<PlayerId, number>, autoActivate
     },
     initiativeHolder: 'B',
     turningPoint: 1,
-    awaitingInitiative: false,
+    activationPhase: 'strategy',
     autoActivateOnPass,
   };
 }
@@ -27,7 +27,7 @@ function freshActivation(operativeCounts: Record<PlayerId, number>, autoActivate
 export function createInitialState(): PersistedGameState {
   const zero: PlayerState = { totalBudgetMs: 0, accumulatedElapsedMs: 0 };
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     phase: 'setup',
     players: { A: { ...zero }, B: { ...zero } },
     activePlayers: [],
@@ -40,9 +40,9 @@ export function createInitialState(): PersistedGameState {
 
 /**
  * Starts the game the same way a turning point advances: both players enter
- * shared depletion and `awaitingInitiative` is set, so the very first thing
- * that happens is rolling for initiative rather than assuming Player A goes
- * first. `resolveInitiative` (tapping the winner) hands the clock to them.
+ * shared depletion in the `initiative` phase, so the very first thing that
+ * happens is rolling for initiative rather than assuming Player A goes first.
+ * `resolveInitiative` (tapping the winner) hands the clock to them.
  */
 export function startGame(
   _state: PersistedGameState,
@@ -52,7 +52,7 @@ export function startGame(
   autoActivateOnPass = true,
 ): PersistedGameState {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     phase: 'active',
     players: {
       A: { totalBudgetMs: budgets.A, accumulatedElapsedMs: 0 },
@@ -62,7 +62,7 @@ export function startGame(
     turnStartTimestamp: now,
     pausedActivePlayers: null,
     preSharedActivePlayer: null,
-    activation: { ...freshActivation(operativeCounts, autoActivateOnPass), awaitingInitiative: true },
+    activation: { ...freshActivation(operativeCounts, autoActivateOnPass), activationPhase: 'initiative' },
   };
 }
 
@@ -100,20 +100,15 @@ function setActive(state: PersistedGameState, activePlayers: PlayerId[], now: nu
 }
 
 /**
- * Forgiveness feature (setup-time setting, default on): if *any* operative,
- * on either side, is already Activated this turning point (i.e. activation
- * tracking is "in use" this turning point), passing the turn auto-marks the
- * passing player's left-most Ready operative Activated too, in case they
- * forgot to tap it before passing. Does nothing before anyone has manually
- * activated an operative this turning point, nor once the passing player has
- * no Ready operatives left.
+ * Forgiveness feature (setup-time setting, default on): during the firefight
+ * phase, passing the turn auto-marks the passing player's left-most Ready
+ * operative Activated, in case they forgot to tap it before passing. Does
+ * nothing outside the firefight phase (there are no activations during
+ * strategy), nor once the passing player has no Ready operatives left.
  */
 function autoActivateOnPass(state: PersistedGameState, passingPlayer: PlayerId): PersistedGameState {
   if (!state.activation.autoActivateOnPass) return state;
-  const anyActivated =
-    state.activation.operativeStates.A.some((s) => s === 'activated') ||
-    state.activation.operativeStates.B.some((s) => s === 'activated');
-  if (!anyActivated) return state;
+  if (state.activation.activationPhase !== 'firefight') return state;
   const row = state.activation.operativeStates[passingPlayer];
   const readyIndex = row.findIndex((s) => s === 'ready');
   if (readyIndex === -1) return state;
@@ -179,6 +174,19 @@ export function cycleOperative(state: PersistedGameState, player: PlayerId, inde
   };
 }
 
+/**
+ * Ends the strategy phase and enters the firefight phase for this turning
+ * point. Driven by the "End Strategy Phase" prompt in the center band. Only
+ * during firefight does passing the turn auto-activate operatives.
+ */
+export function endStrategyPhase(state: PersistedGameState): PersistedGameState {
+  if (state.activation.activationPhase !== 'strategy') return state;
+  return {
+    ...state,
+    activation: { ...state.activation, activationPhase: 'firefight' },
+  };
+}
+
 export function toggleInitiative(state: PersistedGameState): PersistedGameState {
   return {
     ...state,
@@ -189,9 +197,9 @@ export function toggleInitiative(state: PersistedGameState): PersistedGameState 
 /**
  * Advancing a turning point also puts both players into shared depletion
  * (the clock keeps running fairly for both while they sort out who won
- * initiative) and flags `awaitingInitiative`, which the UI uses to cover the
- * activation grid with a "tap the winner" prompt. `resolveInitiative` clears
- * that flag once a player is tapped.
+ * initiative) and returns to the `initiative` phase, which the UI uses to
+ * cover the activation grid with a "tap the winner" prompt. `resolveInitiative`
+ * advances out of that phase once a player is tapped.
  */
 export function advanceTurningPoint(state: PersistedGameState, now: number): PersistedGameState {
   const readyUpActivated = (row: OperativeState[]) => row.map((s) => (s === 'activated' ? 'ready' : s));
@@ -201,7 +209,7 @@ export function advanceTurningPoint(state: PersistedGameState, now: number): Per
     activation: {
       ...state.activation,
       turningPoint: state.activation.turningPoint + 1,
-      awaitingInitiative: true,
+      activationPhase: 'initiative',
       operativeStates: {
         A: readyUpActivated(state.activation.operativeStates.A),
         B: readyUpActivated(state.activation.operativeStates.B),
@@ -210,12 +218,16 @@ export function advanceTurningPoint(state: PersistedGameState, now: number): Per
   };
 }
 
+/**
+ * Resolves the `initiative` phase: hands the clock to the winner and advances
+ * into the `strategy` phase. A no-op outside the `initiative` phase.
+ */
 export function resolveInitiative(state: PersistedGameState, winner: PlayerId, now: number): PersistedGameState {
-  if (!state.activation.awaitingInitiative) return state;
+  if (state.activation.activationPhase !== 'initiative') return state;
   const activated = setActive(state, [winner], now);
   return {
     ...activated,
     preSharedActivePlayer: null,
-    activation: { ...state.activation, initiativeHolder: winner, awaitingInitiative: false },
+    activation: { ...state.activation, initiativeHolder: winner, activationPhase: 'strategy' },
   };
 }

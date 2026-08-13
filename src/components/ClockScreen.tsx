@@ -24,18 +24,19 @@ export function ClockScreen({ clock }: { clock: GameClock }) {
     toggleInitiative,
     advanceTurningPoint,
     resolveInitiative,
+    endStrategyPhase,
   } = clock;
 
   const isShared = state.activePlayers.length === 2;
   const isPaused = state.activePlayers.length === 0;
-  const awaitingInitiative = state.activation.awaitingInitiative;
+  const awaitingInitiative = state.activation.activationPhase === 'initiative';
 
-  // While awaiting initiative (just after advancing a turning point),
-  // tapping either zone declares that player the winner instead of the
-  // normal pass-turn behavior. Otherwise, a player's own zone only passes
-  // the turn when they're the sole active player — during shared depletion
-  // or while paused, tapping is a no-op (the menu is the only way to change
-  // those modes).
+  // While in the initiative phase (just after starting the game or advancing
+  // a turning point), tapping either zone declares that player the winner
+  // instead of the normal pass-turn behavior. Otherwise, a player's own zone
+  // only passes the turn when they're the sole active player — during shared
+  // depletion or while paused, tapping is a no-op (the menu is the only way to
+  // change those modes).
   const handleTap = (player: 'A' | 'B') => {
     if (awaitingInitiative) {
       resolveInitiative(player);
@@ -92,8 +93,9 @@ export function ClockScreen({ clock }: { clock: GameClock }) {
         operativeStates={state.activation.operativeStates}
         initiativeHolder={state.activation.initiativeHolder}
         turningPoint={state.activation.turningPoint}
-        awaitingInitiative={awaitingInitiative}
+        activationPhase={state.activation.activationPhase}
         onCycleOperative={cycleOperative}
+        onEndStrategyPhase={endStrategyPhase}
       />
       <PlayerZone
         player="A"

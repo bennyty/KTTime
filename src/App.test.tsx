@@ -43,6 +43,37 @@ describe('App', () => {
     expect(screen.getByText('Player A').closest('button')).toHaveTextContent('Active');
   });
 
+  it('shows the strategy phase after initiative is resolved; tapping it ends the strategy phase', () => {
+    vi.useFakeTimers();
+    render(<App />);
+    fireEvent.click(screen.getByText('Start game'));
+
+    // Resolve the opening initiative roll to reach the strategy phase.
+    fireEvent.click(screen.getByText('Player A'));
+
+    const endStrategy = screen.getByText('Tap to end strategy phase');
+    expect(endStrategy).toBeInTheDocument();
+
+    fireEvent.click(endStrategy);
+
+    // Firefight phase: the strategy prompt is gone and the operative grid shows.
+    expect(screen.queryByText('Tap to end strategy phase')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Player A operative 1: ready')).toBeInTheDocument();
+  });
+
+  it('passing the turn during the firefight phase auto-activates the passing player\'s left-most ready operative', () => {
+    vi.useFakeTimers();
+    render(<App />);
+    fireEvent.click(screen.getByText('Start game'));
+
+    fireEvent.click(screen.getByText('Player A')); // A wins initiative
+    fireEvent.click(screen.getByText('Tap to end strategy phase')); // enter firefight
+
+    fireEvent.click(screen.getByText('Player A')); // A passes the turn to B
+
+    expect(screen.getByLabelText('Player A operative 1: activated')).toBeInTheDocument();
+  });
+
   it("tapping the active player's own zone passes the turn to the other player", () => {
     vi.useFakeTimers();
     render(<App />);
