@@ -42,13 +42,13 @@ export function PlayerZone({ player, remainingMs, isActive, isShared, flipped, o
         holding ? 'brightness-75' : ''
       } ${flipped ? 'rotate-180' : ''}`}
     >
-      <span className="absolute left-4 top-3 text-xs uppercase tracking-wider opacity-60">Player {player}</span>
+      <span className="absolute left-4 top-3 text-sm uppercase tracking-wider opacity-60">Player {player}</span>
       {badge && (
-        <span className="absolute right-4 top-3 rounded-full bg-white/15 px-2.5 py-1 text-xs uppercase tracking-wide">
+        <span className="absolute right-4 top-3 rounded-full bg-white/15 px-2.5 py-1 text-sm uppercase tracking-wide">
           {badge}
         </span>
       )}
-      <span className="font-bold tabular-nums" style={{ fontSize: '15vw' }}>
+      <span className="font-bold tabular-nums" style={{ fontSize: '22vw' }}>
         {formatDuration(remainingMs)}
       </span>
     </button>

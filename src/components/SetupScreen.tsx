@@ -4,7 +4,7 @@ import { DEFAULT_PRESET, TIME_CONTROL_PRESETS } from '../timer/presets';
 const MINUTE_MS = 60_000;
 const MIN_OPERATIVES = 5;
 const MAX_OPERATIVES = 14;
-const DEFAULT_OPERATIVES = 14;
+const DEFAULT_OPERATIVES = 9;
 
 interface SetupScreenProps {
   onStart: (
@@ -49,10 +49,10 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 bg-black px-6 text-neutral-100">
-      <h1 className="text-2xl font-bold">KTTime</h1>
+      <h1 className="text-3xl font-bold">KTTime</h1>
 
       <div className="w-full max-w-xs">
-        <p className="mb-2 text-sm uppercase tracking-wide text-neutral-400">Total game time</p>
+        <p className="mb-2 text-base uppercase tracking-wide text-neutral-400">Total game time</p>
         <div className="grid grid-cols-2 gap-2">
           {TIME_CONTROL_PRESETS.map((preset) => {
             const minutes = preset.totalMs / MINUTE_MS;
@@ -65,17 +65,17 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
                   setIsCustom(false);
                   applyTotal(minutes);
                 }}
-                className={`rounded-lg p-3 text-sm ${selected ? 'bg-green-700' : 'bg-neutral-800'}`}
+                className={`rounded-lg p-3 text-base ${selected ? 'bg-green-700' : 'bg-neutral-800'}`}
               >
                 {preset.label}
-                {preset === DEFAULT_PRESET && <span className="block text-xs opacity-60">default</span>}
+                {preset === DEFAULT_PRESET && <span className="block text-sm opacity-60">default</span>}
               </button>
             );
           })}
         </div>
 
         <div className="mt-3">
-          <label className="mb-1 block text-sm uppercase tracking-wide text-neutral-400" htmlFor="custom-minutes">
+          <label className="mb-1 block text-base uppercase tracking-wide text-neutral-400" htmlFor="custom-minutes">
             Custom (minutes)
           </label>
           <input
@@ -90,12 +90,12 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
               const parsed = Number(e.target.value);
               if (parsed > 0) applyTotal(parsed);
             }}
-            className="w-full rounded-lg bg-neutral-800 p-3 text-sm text-neutral-100"
+            className="w-full rounded-lg bg-neutral-800 p-3 text-base text-neutral-100"
             placeholder="e.g. 150"
           />
         </div>
 
-        <label className="mt-4 flex items-center gap-2 text-sm text-neutral-300">
+        <label className="mt-4 flex items-center gap-2 text-base text-neutral-300">
           <input
             type="checkbox"
             checked={asymmetric}
@@ -108,7 +108,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         {asymmetric && (
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block text-xs text-neutral-400" htmlFor="minutes-a">
+              <label className="mb-1 block text-sm text-neutral-400" htmlFor="minutes-a">
                 Player A (min)
               </label>
               <input
@@ -118,11 +118,11 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
                 inputMode="numeric"
                 value={minutesA}
                 onChange={(e) => setMinutesA(Number(e.target.value))}
-                className="w-full rounded-lg bg-neutral-800 p-3 text-sm text-neutral-100"
+                className="w-full rounded-lg bg-neutral-800 p-3 text-base text-neutral-100"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-neutral-400" htmlFor="minutes-b">
+              <label className="mb-1 block text-sm text-neutral-400" htmlFor="minutes-b">
                 Player B (min)
               </label>
               <input
@@ -132,7 +132,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
                 inputMode="numeric"
                 value={minutesB}
                 onChange={(e) => setMinutesB(Number(e.target.value))}
-                className="w-full rounded-lg bg-neutral-800 p-3 text-sm text-neutral-100"
+                className="w-full rounded-lg bg-neutral-800 p-3 text-base text-neutral-100"
               />
             </div>
           </div>
@@ -140,10 +140,10 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       </div>
 
       <div className="w-full max-w-xs">
-        <p className="mb-2 text-sm uppercase tracking-wide text-neutral-400">Operatives per player</p>
+        <p className="mb-2 text-base uppercase tracking-wide text-neutral-400">Operatives per player</p>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="mb-1 block text-xs text-neutral-400" htmlFor="operatives-a">
+            <label className="mb-1 block text-sm text-neutral-400" htmlFor="operatives-a">
               Player A
             </label>
             <input
@@ -154,11 +154,11 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
               inputMode="numeric"
               value={operativesA}
               onChange={(e) => setOperativesA(Number(e.target.value))}
-              className="w-full rounded-lg bg-neutral-800 p-3 text-sm text-neutral-100"
+              className="w-full rounded-lg bg-neutral-800 p-3 text-base text-neutral-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-neutral-400" htmlFor="operatives-b">
+            <label className="mb-1 block text-sm text-neutral-400" htmlFor="operatives-b">
               Player B
             </label>
             <input
@@ -169,15 +169,15 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
               inputMode="numeric"
               value={operativesB}
               onChange={(e) => setOperativesB(Number(e.target.value))}
-              className="w-full rounded-lg bg-neutral-800 p-3 text-sm text-neutral-100"
+              className="w-full rounded-lg bg-neutral-800 p-3 text-base text-neutral-100"
             />
           </div>
         </div>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-sm text-neutral-500">
           {MIN_OPERATIVES}-{MAX_OPERATIVES} each
         </p>
 
-        <label className="mt-3 flex items-center gap-2 text-sm text-neutral-300">
+        <label className="mt-3 flex items-center gap-2 text-base text-neutral-300">
           <input
             type="checkbox"
             checked={autoActivateOnPass}
@@ -186,7 +186,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
           />
           Automatically activate operatives
         </label>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-sm text-neutral-500">
           When passing the turn, auto-marks your left-most ready operative as activated if you already activated at
           least one this turning point.
         </p>
@@ -196,7 +196,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
         type="button"
         onClick={handleStart}
         disabled={!canStart}
-        className="w-full max-w-xs rounded-lg bg-green-700 p-4 text-lg font-semibold text-white disabled:opacity-40"
+        className="w-full max-w-xs rounded-lg bg-green-700 p-4 text-xl font-semibold text-white disabled:opacity-40"
       >
         Start game
       </button>

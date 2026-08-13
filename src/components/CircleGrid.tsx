@@ -55,7 +55,7 @@ function Row({
           type="button"
           onClick={() => onCycle(i)}
           aria-label={`Player ${player} operative ${i + 1}: ${state}`}
-          className={`flex aspect-square items-center justify-center rounded-full text-[10px] leading-none ${stateClass(state)}`}
+          className={`flex aspect-square items-center justify-center rounded-full text-xs leading-none ${stateClass(state)}`}
           style={{ flexGrow: CIRCLE_UNITS, flexBasis: 0 }}
         >
           {state === 'incapacitated' ? '☠' : ''}

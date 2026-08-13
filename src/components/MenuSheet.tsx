@@ -49,45 +49,45 @@ export function MenuSheet({
       }`}
     >
       <div>
-        <p className="mb-2 text-xs uppercase tracking-wider text-neutral-500">Clock</p>
+        <p className="mb-2 text-sm uppercase tracking-wider text-neutral-500">Clock</p>
         <div className="flex flex-col gap-2.5">
           <button
             type="button"
             onClick={onTogglePause}
-            className="rounded-lg bg-neutral-800 p-3.5 text-left text-base text-neutral-100"
+            className="rounded-lg bg-neutral-800 p-3.5 text-left text-lg text-neutral-100"
           >
             {isPaused ? 'Resume game' : 'Pause game'}
           </button>
           <button
             type="button"
             onClick={onToggleShared}
-            className="rounded-lg bg-neutral-800 p-3.5 text-left text-base text-neutral-100"
+            className="rounded-lg bg-neutral-800 p-3.5 text-left text-lg text-neutral-100"
           >
             Shared depletion {isShared && <span className="float-right opacity-70">✓ on</span>}
           </button>
           <button
             type="button"
             onClick={onReset}
-            className="rounded-lg bg-neutral-800 p-3.5 text-left text-base text-neutral-100"
+            className="rounded-lg bg-neutral-800 p-3.5 text-left text-lg text-neutral-100"
           >
             Reset (back to setup)
           </button>
         </div>
       </div>
       <div>
-        <p className="mb-2 text-xs uppercase tracking-wider text-neutral-500">Game state</p>
+        <p className="mb-2 text-sm uppercase tracking-wider text-neutral-500">Game state</p>
         <div className="flex flex-col gap-2.5">
           <button
             type="button"
             onClick={onAdvanceTurningPoint}
-            className="w-full rounded-lg bg-neutral-800 p-3.5 text-left text-base text-neutral-100"
+            className="w-full rounded-lg bg-neutral-800 p-3.5 text-left text-lg text-neutral-100"
           >
             Next turning point <span className="float-right opacity-70">currently {turningPoint}</span>
           </button>
           <button
             type="button"
             onClick={onToggleInitiative}
-            className="w-full rounded-lg bg-neutral-800 p-3.5 text-left text-base text-neutral-100"
+            className="w-full rounded-lg bg-neutral-800 p-3.5 text-left text-lg text-neutral-100"
           >
             Toggle initiative <span className="float-right opacity-70">currently Player {initiativeHolder}</span>
           </button>
@@ -96,7 +96,7 @@ export function MenuSheet({
       <button
         type="button"
         onClick={onClose}
-        className="rounded-lg bg-neutral-800 p-3.5 text-left text-base text-neutral-100"
+        className="rounded-lg bg-neutral-800 p-3.5 text-left text-lg text-neutral-100"
       >
         Close
       </button>

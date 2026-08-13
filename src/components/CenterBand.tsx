@@ -20,20 +20,20 @@ export function CenterBand({
 }: CenterBandProps) {
   return (
     <div className="flex flex-col bg-neutral-950 m-3">
-      <span className="text-sm uppercase tracking-wider text-neutral-600">Turning Point {turningPoint}</span>
+      <span className="text-base uppercase tracking-wider text-neutral-600">Turning Point {turningPoint}</span>
       {activationPhase === 'initiative' ? (
-        <div className="flex flex-col items-center gap-1 py-4 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-neutral-100">Roll for initiative</p>
-          <p className="text-xs text-neutral-400">Tap the player who won</p>
+        <div className="flex flex-col items-center gap-1 pb-4 text-center">
+          <p className="text-lg font-semibold uppercase tracking-wide text-neutral-100">Roll for initiative</p>
+          <p className="text-base text-neutral-400">Tap the player who won</p>
         </div>
       ) : activationPhase === 'strategy' ? (
         <button
           type="button"
           onClick={onEndStrategyPhase}
-          className="flex flex-col items-center gap-1 py-4 text-center"
+          className="flex flex-col items-center gap-1 pb-4 text-center"
         >
-          <span className="text-sm font-semibold uppercase tracking-wide text-neutral-100">Strategy phase</span>
-          <span className="text-xs text-neutral-400">Tap to end strategy phase</span>
+          <span className="text-lg font-semibold uppercase tracking-wide text-neutral-100">Strategy phase</span>
+          <span className="text-base text-neutral-400">Tap to end strategy phase</span>
         </button>
       ) : (
         <CircleGrid operativeStates={operativeStates} initiativeHolder={initiativeHolder} onCycle={onCycleOperative} />
