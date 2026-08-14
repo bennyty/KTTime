@@ -33,7 +33,7 @@ export function CenterBand({
           className="flex flex-col items-center gap-1 pb-4 text-center"
         >
           <span className="text-lg font-semibold uppercase tracking-wide text-neutral-100">Strategy phase</span>
-          <span className="text-base text-neutral-400">Tap to end strategy phase</span>
+          <span className="text-base text-neutral-400">Tap here to end strategy phase</span>
         </button>
       ) : (
         <CircleGrid operativeStates={operativeStates} initiativeHolder={initiativeHolder} onCycle={onCycleOperative} />

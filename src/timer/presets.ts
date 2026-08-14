@@ -4,13 +4,12 @@ export interface TimeControlPreset {
   totalMs: number;
 }
 
-const HOUR = 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
 export const TIME_CONTROL_PRESETS: TimeControlPreset[] = [
-  { label: '2 hours', totalMs: 2 * HOUR },
-  { label: '3 hours', totalMs: 3 * HOUR },
-  { label: '4 hours', totalMs: 4 * HOUR },
-  { label: '5 hours', totalMs: 5 * HOUR },
+  { label: '2 hours', totalMs: 2 * HOUR_MS },
+  { label: '3 hours', totalMs: 3 * HOUR_MS },
+  { label: '4 hours', totalMs: 4 * HOUR_MS },
 ];
 
 export const DEFAULT_PRESET = TIME_CONTROL_PRESETS[0];

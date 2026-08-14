@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DEFAULT_PRESET, TIME_CONTROL_PRESETS } from '../timer/presets';
 
 const MINUTE_MS = 60_000;
@@ -28,6 +28,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
   const [operativesA, setOperativesA] = useState(DEFAULT_OPERATIVES);
   const [operativesB, setOperativesB] = useState(DEFAULT_OPERATIVES);
   const [autoActivateOnPass, setAutoActivateOnPass] = useState(true);
+  const customMinutesRef = useRef<HTMLInputElement>(null);
 
   const applyTotal = (minutes: number) => {
     setTotalMinutes(minutes);
@@ -68,17 +69,30 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
                 className={`rounded-lg p-3 text-base ${selected ? 'bg-green-700' : 'bg-neutral-800'}`}
               >
                 {preset.label}
-                {preset === DEFAULT_PRESET && <span className="block text-sm opacity-60">default</span>}
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => {
+              setIsCustom(true);
+              applyTotal(0);
+              customMinutesRef.current?.focus();
+            }}
+            className={`rounded-lg p-3 text-base ${isCustom ? 'bg-green-700' : 'bg-neutral-800'}`}
+          >
+            Custom
+          </button>
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3"
+          style={{ display: isCustom ? 'block' : 'none' }}
+        >
           <label className="mb-1 block text-base uppercase tracking-wide text-neutral-400" htmlFor="custom-minutes">
             Custom (minutes)
           </label>
           <input
+            ref={customMinutesRef}
             id="custom-minutes"
             type="number"
             min={1}
@@ -86,7 +100,6 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
             value={customMinutes}
             onChange={(e) => {
               setCustomMinutes(e.target.value);
-              setIsCustom(true);
               const parsed = Number(e.target.value);
               if (parsed > 0) applyTotal(parsed);
             }}
@@ -173,9 +186,6 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
             />
           </div>
         </div>
-        <p className="mt-1 text-sm text-neutral-500">
-          {MIN_OPERATIVES}-{MAX_OPERATIVES} each
-        </p>
 
         <label className="mt-3 flex items-center gap-2 text-base text-neutral-300">
           <input
@@ -187,8 +197,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
           Automatically activate operatives
         </label>
         <p className="mt-1 text-sm text-neutral-500">
-          When passing the turn, auto-marks your left-most ready operative as activated if you already activated at
-          least one this turning point.
+          When passing the turn, auto-marks your left-most Ready operative as Expended.
         </p>
       </div>
 
@@ -200,6 +209,27 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       >
         Start game
       </button>
+
+      <footer className="mt-2 text-center text-sm text-neutral-500">
+        Like this timer? Check out our other Kill Team tools:{' '}
+        <a
+          href="https://bennyty.github.io/KTBoard/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-neutral-300 underline"
+        >
+          KTBoard
+        </a>{' '}
+        &{' '}
+        <a
+          href="https://bennyty.github.io/KTdle/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-neutral-300 underline"
+        >
+          KTdle
+        </a>
+      </footer>
     </div>
   );
 }
