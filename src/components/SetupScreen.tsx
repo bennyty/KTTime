@@ -12,13 +12,15 @@ interface SetupScreenProps {
     operativeCounts: { A: number; B: number },
     autoActivateOnPass: boolean,
   ) => void;
+  /** Opens the opt-in tutorial. Optional so the setup screen renders unchanged without it. */
+  onOpenTutorial?: () => void;
 }
 
 function validOperativeCount(n: number) {
   return Number.isInteger(n) && n >= MIN_OPERATIVES && n <= MAX_OPERATIVES;
 }
 
-export function SetupScreen({ onStart }: SetupScreenProps) {
+export function SetupScreen({ onStart, onOpenTutorial }: SetupScreenProps) {
   const [totalMinutes, setTotalMinutes] = useState(DEFAULT_PRESET.totalMs / MINUTE_MS);
   const [customMinutes, setCustomMinutes] = useState('');
   const [isCustom, setIsCustom] = useState(false);
@@ -197,7 +199,7 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
           Automatically activate operatives
         </label>
         <p className="mt-1 text-sm text-neutral-500">
-          When passing the turn, auto-marks your left-most Ready operative as Expended.
+          When passing the turn, auto-marks your next Ready operative as Expended.
         </p>
       </div>
 
@@ -209,6 +211,16 @@ export function SetupScreen({ onStart }: SetupScreenProps) {
       >
         Start game
       </button>
+
+      {onOpenTutorial && (
+        <button
+          type="button"
+          onClick={onOpenTutorial}
+          className="-mt-2 w-full max-w-xs rounded-lg border border-neutral-700 p-3 text-base text-neutral-300"
+        >
+          New here? Take the tutorial
+        </button>
+      )}
 
       <footer className="mt-2 text-center text-sm text-neutral-500">
         Like this timer? Check out our other Kill Team tools:{' '}

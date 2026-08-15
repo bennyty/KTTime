@@ -203,6 +203,7 @@ export function toggleInitiative(state: PersistedGameState): PersistedGameState 
  */
 export function advanceTurningPoint(state: PersistedGameState, now: number): PersistedGameState {
   const readyUpActivated = (row: OperativeState[]) => row.map((s) => (s === 'activated' ? 'ready' : s));
+  const sort = (row: OperativeState[]) => row.toSorted((a) => (a === 'ready' ? -1 : 1));
   const activated = setActive(state, ['A', 'B'], now);
   return {
     ...activated,
@@ -211,8 +212,8 @@ export function advanceTurningPoint(state: PersistedGameState, now: number): Per
       turningPoint: state.activation.turningPoint + 1,
       activationPhase: 'initiative',
       operativeStates: {
-        A: readyUpActivated(state.activation.operativeStates.A),
-        B: readyUpActivated(state.activation.operativeStates.B),
+        A: sort(readyUpActivated(state.activation.operativeStates.A)),
+        B: sort(readyUpActivated(state.activation.operativeStates.B)),
       },
     },
   };
