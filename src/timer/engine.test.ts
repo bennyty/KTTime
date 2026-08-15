@@ -293,7 +293,11 @@ describe('advanceTurningPoint', () => {
     state = cycleOperative(state, 'A', 0); // ready -> activated
     state = cycleOperative(state, 'A', 0); // activated -> incapacitated
     state = advanceTurningPoint(state, T0 + 10_000);
-    expect(state.activation.operativeStates.A[0]).toBe('incapacitated');
+    // Only Activated operatives reset to Ready; the Incapacitated one survives.
+    // Advancing also sorts Ready to the front, so the survivor is no longer at
+    // index 0 — assert it's still present rather than pinning its position.
+    const row = state.activation.operativeStates.A;
+    expect(row.filter((s) => s === 'incapacitated')).toHaveLength(1);
   });
 
   it('is uncapped', () => {

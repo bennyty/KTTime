@@ -24,19 +24,43 @@ function tapZone(player: 'A' | 'B') {
 describe('countCounteracts', () => {
   // B holds initiative (aligned left); you (A) are offset right, so the
   // unanswered gap sits opposite each of B's ready-pairs at slot index j.
-  it('counts each opponent ready-pair whose facing slot you have expended', () => {
+  it('counts easy', () => {
     const states: Record<'A' | 'B', OperativeState[]> = {
-      A: ['activated', 'activated', 'activated', 'ready', 'ready', 'ready'],
-      B: ['ready', 'ready', 'ready', 'ready', 'ready', 'ready'],
+      B: ['ready', 'ready', 'ready'],
+      A: ['ready'],
     };
-    // B pairs (0,1)(1,2)(2,3)(3,4)(4,5); your facing slots 0..4 — 0,1,2 expended.
+    expect(countCounteracts(states, 'A', 'A')).toBe(2);
+  });
+
+  it('counts easy with B initiative', () => {
+    const states: Record<'A' | 'B', OperativeState[]> = {
+      B: ['ready', 'ready', 'ready'],
+      A: ['ready'],
+    };
+    expect(countCounteracts(states, 'B', 'A')).toBe(1);
+  });
+
+  it('shows right number in tutorial', () => {
+    const states: Record<'A' | 'B', OperativeState[]> = {
+      B: Array(3).fill('activated').concat(Array(6).fill('ready')),
+      A: Array(3).fill('activated').concat(Array(2).fill('ready')),
+    };
     expect(countCounteracts(states, 'B', 'A')).toBe(3);
+  });
+
+  it('counts invalid state', () => {
+    const states: Record<'A' | 'B', OperativeState[]> = {
+      B: ['ready', 'ready', 'ready', 'ready', 'ready', 'ready'],
+      A: ['activated', 'activated', 'activated', 'ready', 'ready', 'ready'],
+    };
+    // This is really an invalid state, B can't have so many ready operatives on the leading side of the activation order.
+    expect(countCounteracts(states, 'B', 'A')).toBe(0);
   });
 
   it('is zero when your ready operatives interleave every opponent pair', () => {
     const states: Record<'A' | 'B', OperativeState[]> = {
-      A: Array(6).fill('ready'),
       B: Array(6).fill('ready'),
+      A: Array(6).fill('ready'),
     };
     expect(countCounteracts(states, 'B', 'A')).toBe(0);
   });
@@ -76,6 +100,14 @@ describe('tutorial workflow', () => {
     expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
     clickNext();
 
+    // Ending the turning point: open the menu, then advance to the next TP.
+    heading(/Ending the turning point/);
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Player A menu' }));
+    fireEvent.click(screen.getByRole('button', { name: /Next TP/ }));
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+    clickNext();
+
     // Initiative: tap the winner.
     heading(/Initiative/);
     tapZone('A');
@@ -91,17 +123,21 @@ describe('tutorial workflow', () => {
     fireEvent.click(screen.getByLabelText('Player A operative 1: ready'));
     clickNext();
 
-    // Counteracts: the negative-space count badge is shown.
-    heading(/Counteracts/);
-    expect(screen.getByLabelText(/counteractions available/)).toBeInTheDocument();
+    // Auto-activation: passing the turn expends your next operative for you.
+    heading(/Automatically activate/);
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    tapZone('A');
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
     clickNext();
 
-    // Ending the turning point: open the menu, then advance to the next TP.
-    heading(/Ending the turning point/);
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Player A menu' }));
-    fireEvent.click(screen.getByRole('button', { name: /Next TP/ }));
-    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+    // Counteracts: the negative-space count badge is shown; cycling is required.
+    heading(/Counteracts/);
+    expect(screen.getByLabelText(/counteractions available/)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Player A operative 4: ready'));
+    clickNext();
+
+    // Tracking activations: read-only exploration, Next is open immediately.
+    heading(/Tracking activations/);
     clickNext();
 
     // Done -> Finish returns to setup with the real game untouched.

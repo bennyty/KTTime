@@ -75,7 +75,7 @@ export function CounteractAnnotations({
       for (let j = 0; j + 1 < them.length; j++) {
         if (them[j].state === 'ready' && them[j + 1].state === 'ready') {
           const yourSlot = viewerOffset ? j : j + 1;
-          const hasCounteract = (yourSlot >= you.length || you[yourSlot].state !== 'ready') && j > you.length;
+          const hasCounteract = (yourSlot >= you.length || you[yourSlot].state === 'incapacitated')
           const mx = (them[j].cx + them[j + 1].cx) / 2;
           if (hasCounteract) {
             next.push({ x: mx, y: midY });

@@ -10,6 +10,14 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// The tappable player zone is a full-bleed <button aria-label="Player X zone">
+// sitting under the (pointer-events-none) label/badge, so target it by role
+// rather than clicking the "Player X" label text.
+const zone = (player: 'A' | 'B') => screen.getByRole('button', { name: `Player ${player} zone` });
+// The label, badge, brightness state, etc. live on the zone's outer container,
+// which is the nearest <div> ancestor of the "Player X" label span.
+const zoneEl = (player: 'A' | 'B') => screen.getByText(`Player ${player}`).closest('div')!;
+
 describe('App', () => {
   it('starts on the setup screen with the default preset selected', () => {
     render(<App />);
@@ -36,11 +44,11 @@ describe('App', () => {
     expect(screen.getAllByText('Shared')).toHaveLength(2);
     expect(screen.getByText('Roll for initiative')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Player A'));
+    fireEvent.click(zone('A'));
 
     expect(screen.queryByText('Roll for initiative')).not.toBeInTheDocument();
     expect(screen.getAllByText('Active').length).toBe(1);
-    expect(screen.getByText('Player A').closest('button')).toHaveTextContent('Active');
+    expect(zoneEl('A')).toHaveTextContent('Active');
   });
 
   it('shows the strategy phase after initiative is resolved; tapping it ends the strategy phase', () => {
@@ -49,15 +57,15 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Start game'));
 
     // Resolve the opening initiative roll to reach the strategy phase.
-    fireEvent.click(screen.getByText('Player A'));
+    fireEvent.click(zone('A'));
 
-    const endStrategy = screen.getByText('Tap to end strategy phase');
+    const endStrategy = screen.getByText('Tap here to end strategy phase');
     expect(endStrategy).toBeInTheDocument();
 
     fireEvent.click(endStrategy);
 
     // Firefight phase: the strategy prompt is gone and the operative grid shows.
-    expect(screen.queryByText('Tap to end strategy phase')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tap here to end strategy phase')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Player A operative 1: ready')).toBeInTheDocument();
   });
 
@@ -66,10 +74,10 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(screen.getByText('Start game'));
 
-    fireEvent.click(screen.getByText('Player A')); // A wins initiative
-    fireEvent.click(screen.getByText('Tap to end strategy phase')); // enter firefight
+    fireEvent.click(zone('A')); // A wins initiative
+    fireEvent.click(screen.getByText('Tap here to end strategy phase')); // enter firefight
 
-    fireEvent.click(screen.getByText('Player A')); // A passes the turn to B
+    fireEvent.click(zone('A')); // A passes the turn to B
 
     expect(screen.getByLabelText('Player A operative 1: activated')).toBeInTheDocument();
   });
@@ -80,9 +88,9 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Start game'));
 
     // Resolve the opening initiative roll so A is the sole active player.
-    fireEvent.click(screen.getByText('Player A'));
+    fireEvent.click(zone('A'));
 
-    fireEvent.click(screen.getByText('Player A'));
+    fireEvent.click(zone('A'));
 
     // Re-render is driven by the ticking interval; flush it inside act().
     act(() => {
@@ -90,7 +98,7 @@ describe('App', () => {
     });
 
     expect(screen.getAllByText('Active').length).toBe(1);
-    expect(screen.getByText('Player B').closest('button')).toHaveTextContent('Active');
+    expect(zoneEl('B')).toHaveTextContent('Active');
   });
 
   it('long-pressing a player zone opens the menu on release; reset from it returns to the setup screen', () => {
@@ -98,19 +106,21 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(screen.getByText('Start game'));
 
-    fireEvent.pointerDown(screen.getByText('Player A'), { clientX: 0, clientY: 0 });
+    fireEvent.pointerDown(zone('A'), { clientX: 0, clientY: 0 });
     act(() => {
       vi.advanceTimersByTime(600);
     });
     // The menu doesn't open until release — it must not exist while the
     // finger is still down, so a menu button can never end up underneath it.
-    expect(screen.queryByRole('button', { name: /Reset \(back to setup\)/ })).not.toBeInTheDocument();
-    fireEvent.pointerUp(screen.getByText('Player A'));
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
+    fireEvent.pointerUp(zone('A'));
 
     // Both players have a permanently-mounted (but off-screen when inactive)
     // menu with identical button text, so target the accessible one — RTL's
-    // getByRole excludes aria-hidden subtrees by default.
-    fireEvent.click(screen.getByRole('button', { name: /Reset \(back to setup\)/ }));
+    // getByRole excludes aria-hidden subtrees by default. Reset asks for a
+    // confirming second tap before it fires.
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
 
     expect(screen.getByText('KTTime')).toBeInTheDocument();
     expect(screen.getByText('Start game')).toBeInTheDocument();
@@ -121,8 +131,8 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(screen.getByText('Start game'));
 
-    const zoneA = screen.getByText('Player A').closest('button');
-    fireEvent.pointerDown(screen.getByText('Player A'), { clientX: 0, clientY: 0 });
+    const zoneA = zoneEl('A');
+    fireEvent.pointerDown(zone('A'), { clientX: 0, clientY: 0 });
     expect(zoneA).not.toHaveClass('brightness-75');
 
     act(() => {
@@ -130,7 +140,7 @@ describe('App', () => {
     });
     expect(zoneA).toHaveClass('brightness-75');
 
-    fireEvent.pointerUp(screen.getByText('Player A'));
+    fireEvent.pointerUp(zone('A'));
     expect(zoneA).not.toHaveClass('brightness-75');
   });
 
@@ -139,14 +149,14 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(screen.getByText('Start game'));
 
-    fireEvent.pointerDown(screen.getByText('Player A'), { clientX: 0, clientY: 0 });
+    fireEvent.pointerDown(zone('A'), { clientX: 0, clientY: 0 });
     act(() => {
       vi.advanceTimersByTime(100);
     });
-    fireEvent.pointerUp(screen.getByText('Player A'));
-    fireEvent.click(screen.getByText('Player A'));
+    fireEvent.pointerUp(zone('A'));
+    fireEvent.click(zone('A'));
 
-    expect(screen.queryByRole('button', { name: /Reset \(back to setup\)/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
   });
 
   it("opening B's menu dismisses A's", () => {
@@ -154,20 +164,20 @@ describe('App', () => {
     render(<App />);
     fireEvent.click(screen.getByText('Start game'));
 
-    fireEvent.pointerDown(screen.getByText('Player A'), { clientX: 0, clientY: 0 });
+    fireEvent.pointerDown(zone('A'), { clientX: 0, clientY: 0 });
     act(() => {
       vi.advanceTimersByTime(600);
     });
-    fireEvent.pointerUp(screen.getByText('Player A'));
-    expect(screen.getAllByRole('button', { name: /Reset \(back to setup\)/ })).toHaveLength(1);
+    fireEvent.pointerUp(zone('A'));
+    expect(screen.getAllByRole('button', { name: 'Reset' })).toHaveLength(1);
 
-    fireEvent.pointerDown(screen.getByText('Player B'), { clientX: 0, clientY: 0 });
+    fireEvent.pointerDown(zone('B'), { clientX: 0, clientY: 0 });
     act(() => {
       vi.advanceTimersByTime(600);
     });
-    fireEvent.pointerUp(screen.getByText('Player B'));
+    fireEvent.pointerUp(zone('B'));
     // Still exactly one accessible Reset button — B's menu replaced A's, not joined it.
-    expect(screen.getAllByRole('button', { name: /Reset \(back to setup\)/ })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Reset' })).toHaveLength(1);
   });
 
   it('advancing the turning point covers the grid with an initiative prompt; tapping a zone resolves it', () => {
@@ -177,25 +187,25 @@ describe('App', () => {
 
     // Resolve the opening initiative roll first, so this exercises advancing
     // a *later* turning point rather than the still-unresolved opening one.
-    fireEvent.click(screen.getByText('Player A'));
+    fireEvent.click(zone('A'));
 
     // Open the menu and advance the turning point.
-    fireEvent.pointerDown(screen.getByText('Player A'), { clientX: 0, clientY: 0 });
+    fireEvent.pointerDown(zone('A'), { clientX: 0, clientY: 0 });
     act(() => {
       vi.advanceTimersByTime(600);
     });
-    fireEvent.pointerUp(screen.getByText('Player A'));
-    fireEvent.click(screen.getByRole('button', { name: /Next turning point/ }));
+    fireEvent.pointerUp(zone('A'));
+    fireEvent.click(screen.getByRole('button', { name: /Next TP/ }));
 
     // Both zones read "Shared" and the grid is covered by the prompt.
     expect(screen.getAllByText('Shared')).toHaveLength(2);
     expect(screen.getByText('Roll for initiative')).toBeInTheDocument();
 
     // Tapping B's zone declares B the winner: prompt clears, B alone is active.
-    fireEvent.click(screen.getByText('Player B'));
+    fireEvent.click(zone('B'));
 
     expect(screen.queryByText('Roll for initiative')).not.toBeInTheDocument();
     expect(screen.getAllByText('Active')).toHaveLength(1);
-    expect(screen.getByText('Player B').closest('button')).toHaveTextContent('Active');
+    expect(zoneEl('B')).toHaveTextContent('Active');
   });
 });

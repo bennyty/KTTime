@@ -42,7 +42,10 @@ export function TutorialScreen({ onExit }: { onExit: () => void }) {
       setDone(true);
       return
     }
-    clock.passTurn();
+    if (clock.state.activePlayers.includes(player)) {
+      clock.passTurn();
+      return
+    }
   };
 
   const handleBandTap = () => {

@@ -141,7 +141,7 @@ export function countCounteracts(
   for (let j = 0; j + 1 < them.length; j++) {
     if (them[j] !== 'ready' || them[j + 1] !== 'ready') continue;
     const yourSlot = viewerOffset ? j : j + 1;
-    const hasCounteract = (yourSlot >= you.length || you[yourSlot] !== 'ready') && j > you.length;
+    const hasCounteract = (yourSlot >= you.length || you[yourSlot] === 'incapacitated')
     if (hasCounteract) count++;
   }
   return count;
